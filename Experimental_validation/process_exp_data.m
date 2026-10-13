@@ -16,7 +16,7 @@ delim = '\\';
 addpath("extra_files\")
 
 % Directory to raw data files
-expdir = 'D:\SRML-1D-pulse-types\Results\Experiments\Data\Raw';
+expdir = 'F:\SRML-1D-pulse-types\Results\Experiments\';
 [filename,filedir] = uigetfile(expdir, 'Select the datafile');
 
 %% LOAD DATA FILE AND OTHER CONNECTOR SPECIFICATIONS
@@ -41,7 +41,7 @@ connectorArray = Trans.Connector;
 
 %% COMPENSATE FOR TRANSFER FUNCTION DIFFERENCES AND GAIN FOR SCALING
 % Simulations TF
-Rcv_TF_sim = load("C:\Users\rienk\OneDrive - University of Twente\Documents\Projects\US pulse shapes for deep learning applications\SRML-1D-pulse-types\RF_simulator\microbubble-simulator\functions\ReceiveTransferFunctionFit.mat");
+Rcv_TF_sim = load("C:\Users\rienk\OneDrive - University of Twente\Documents\Projects\1. US pulse shapes for deep learning applications\SRML-1D-pulse-types\RF_simulator\microbubble-simulator\functions\ReceiveTransferFunctionFit.mat");
 Hfit_sim = Rcv_TF_sim.Hfit;
 Fs = Rcv_TF_sim.Fs;
 N_sim = length(Hfit_sim);
@@ -81,13 +81,13 @@ elseif unique(TGC.Waveform) ~= 1023
 end
 
 %% OTHER GAINS AND FILTERING
-% Define a digital filter to remove low F components outside the
-% bandwidth of the P4-1 Transducer
-fc          = 0.5e6;    % Cut-off frequency in Hz
-fv          = linspace(0,Receive.decimSampleRate*1e6,N_sim);
-Hfilt       = ones(size(fv));
-Hfilt(fv<fc)= 0;
-Hfilt(fv>(max(fv)-fc)) =0;
+% Define the same Butterworth bandpass used for noise augmentation:
+% 0.5-5.1 MHz at the 62.5 MHz RF sampling frequency.
+Fs_RF       = 62.5e6;   % RF sampling frequency in Hz
+filterOrder = 2;        % Butterworth prototype order (4th-order bandpass)
+f_low       = 0.5e6;    % Lower cutoff frequency in Hz
+f_high      = 1.7*3e6;  % Upper cutoff frequency in Hz
+[filt_b, filt_a] = butter(filterOrder, [f_low f_high]/(Fs_RF/2), 'bandpass');
 
 % Define time-dependent ROI gain (this is not TGC, but an arbitrary way to remove artefacts from the signal)
 % Define region of interest
@@ -97,7 +97,10 @@ I           = 200;      % Adjust the signal intensity before and after ROI durin
 
 % TGC gain
 alpha       = 40; % dB, this is the max TGC gain in the Verasonics Vantage
-TGC_gain    = 1/(10^(alpha/20));
+LnaDiff     = 6; %dB, this is the difference in LnaGain from the default Verasonics settings
+PgaDiff     = 6; %dB, this is the difference in PgaGain from the default Verasonics settings
+TGC_dB = alpha + LnaDiff + PgaDiff;
+TGC_gain    = 1/(10^(TGC_dB/20));
 
 %% SEPERATE THE DATA
 % Extract the data from the buffers in RcvData
@@ -144,7 +147,7 @@ for buf = 1:nBuffers
             RF = seperateElements(data,frame,connectorArray);
 
             % Scale and filter
-            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, Hfilt, ROI1, ROI2, I, noise);
+            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
 
             % Construct pulse dataframe
             pulse.p_norm = TW(1).Wvfm1Wy';
@@ -165,7 +168,7 @@ for buf = 1:nBuffers
             RF = seperateElements(data,frame,connectorArray);
 
             % Scale the RF line
-            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, Hfilt, ROI1, ROI2, I, noise);
+            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
 
             % Construct pulse dataframe
             pulse.p_norm = TW(2).Wvfm1Wy';
@@ -186,7 +189,7 @@ for buf = 1:nBuffers
         RFdir = fullfile(dstdir,filename);
 
         % Save the RF data as a .mat file
-        save(RFdir, "RF","pulse")
+        save(RFdir, "RF", "pulse", "TF_gain")
 
     end
 end
@@ -278,7 +281,7 @@ end
 
 end
 
-function RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N, Hfilt, ROI1, ROI2, I, noise)
+function RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N, filt_b, filt_a, ROI1, ROI2, I, noise)
 % Scales the RF lines by correcting for the transfer function differences
 % between simulations and experiments, and compensates for the differences
 % in gain used.
@@ -288,7 +291,8 @@ function RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N, Hfilt, ROI1, ROI2, I, n
 %   TF_gain   - Transfer function gain correction factor (scalar or array).
 %   TGC_gain  - Time-gain compensation factor (scalar).
 %   N         - Number of points for FFT computation (zero-padding length).
-%   Hfilt     - Transfer function filter (frequency domain).
+%   filt_b    - Numerator coefficients of the Butterworth bandpass filter.
+%   filt_a    - Denominator coefficients of the Butterworth bandpass filter.
 %   ROI1      - Start of the region of interest (ROI) in samples.
 %   ROI2      - End of the region of interest (ROI) in samples.
 %   I         - Transition width (in samples) for scaling in and out of the ROI.
@@ -322,12 +326,10 @@ for el = 1:N_el
     % Scale with the transfer function of the transducer
     f_RF_sc     = f_RF .* TF_gain;
 
-    % Remove frequencies using transfer function Hfilt
-    f_RF_sc_filt= f_RF_sc .* Hfilt;
-
-    % Convert back to time domain
-    RF_sc_filt       = real(ifft(f_RF_sc_filt, N));
-    RF_sc_filt       = RF_sc_filt(1:M);
+    % Convert back to time domain, then apply the bandpass without phase shift.
+    RF_sc = real(ifft(f_RF_sc, N));
+    RF_sc = RF_sc(1:M);
+    RF_sc_filt = filtfilt(filt_b, filt_a, RF_sc);
 
     % Scale with gains with ROI vector if the data is not a noise measurement
     if noise == false

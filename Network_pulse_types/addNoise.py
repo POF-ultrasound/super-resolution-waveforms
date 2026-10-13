@@ -15,13 +15,18 @@ V_ref = 9.65                                # Reference value noise
 noiselevels_p = np.array([4,8,16,32,64,128,256],dtype='int32')       # Noise level percentage
 noiselevels   = noiselevels_p*V_ref/100       # Noise level
 
-# Filter parameters
-fs = 62.5   # Sampling frequency (MHz)
-n = 4       # Order of the butterworth filter
-fc = 1.7*3  # Cut-off frequency (MHz)
+# Filter parameters; frequencies are in MHz to match fs.
+fs = 62.5          # Sampling frequency (MHz)
+n = 2              # Butterworth prototype order; bandpass transfer function is 4th order
+f_low = 0.5         # Lower cutoff (MHz), consistent with experimental processing
+f_high = 1.7 * 3    # Upper cutoff (MHz), preserving the current 5.1 MHz limit
 
-# low-pass filter coefficients
-filt_b, filt_a = signal.butter(n, 2*fc/fs, 'low')
+# Design a bandpass filter using normalized cutoff frequencies.
+filt_b, filt_a = signal.butter(
+    n,
+    [2 * f_low / fs, 2 * f_high / fs],
+    btype='bandpass'
+)
 
 def add_noise(V,sigma,b,a):
     # Add noise to the signals and convert to torch cuda tensor

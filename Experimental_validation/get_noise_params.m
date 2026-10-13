@@ -15,6 +15,7 @@ pulse_name = "pulseExpVal_Short_chirp"; % Enter "pulseExpVal_Short_SIP" or "puls
 % Path to signal folder. This is an acquisition with an extreme number of
 % bubbles in the signal.
 parent_path = "D:\SRML-1D-pulse-types\Results\Experiments\Data\Processed\Noise estimation\Signal\20240805_exp_val_data_2-maxbubbles_TGCmax_voltage-2.5\";
+parent_path = "F:\Backup 20250310\SRML-1D-pulse-types\Results\Experiments\Data\Processed\Noise estimation\Signal\20240805_exp_val_data_2-maxbubbles_TGCmax_voltage-2.5\";
 
 % Path to noise folder.
 path = "D:\SRML-1D-pulse-types\Results\Experiments\Data\Processed\Noise estimation\Noise";
