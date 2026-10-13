@@ -13,6 +13,7 @@ from os import listdir
 from os import path, makedirs
 import argparse
 import random
+import matplotlib.pyplot as plt
 
 from bubblenetwork import DilatedCNN
 from bubbledataloader import load_dataset
@@ -436,8 +437,8 @@ def train_noise_absolute_range(pulse_name, noiselevel):
     
     #%% FILE DIRECTORIES
 
-    trndir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
-    valdir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
+    trndir = "F:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
+    valdir = "F:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
     
     # Exclude non-RF datafiles
     trnfilelist = listdir(trndir)
@@ -462,7 +463,7 @@ def train_noise_absolute_range(pulse_name, noiselevel):
         val_dataset,   batch_size=BATCH_SIZE, shuffle=True)
     
     #%% PATHS
-    savedir   = "D:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_absolutenoise' + str(noiselevel) + delim + str(NEPOCHS) + "_epochs"
+    savedir   = "F:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_absolutenoise' + str(noiselevel) + delim + str(NEPOCHS) + "_epochs"
     
     print("Weights stored in: ", savedir)
     if path.exists(savedir) == False:
@@ -490,10 +491,41 @@ def train_noise_absolute_range(pulse_name, noiselevel):
         optimizer.zero_grad()
         for it, sample_batched in enumerate(trn_dataloader):
             
-            V = sample_batched['x'].cpu().numpy()    # RF signals
+            V_clean = sample_batched['x'].cpu().numpy()    # Original RF signals
             
             # Add noise to the RF signals and convert to torch cuda tensor:
-            V = add_noise(V,noiselevel,filt_b,filt_a)
+            V = add_noise(V_clean,noiselevel,filt_b,filt_a)
+
+            # Save and plot a few first-batch RF lines once, including the
+            # exact augmented inputs that are passed to the network.
+            if epoch == 0 and it == 0:
+                n_examples = min(5, V_clean.shape[0])
+                original_lines = V_clean[:n_examples].reshape(n_examples, -1)
+                augmented_lines = V[:n_examples].detach().cpu().numpy().reshape(n_examples, -1)
+                samples_path = path.join(savedir, 'epoch_0_augmented_rf_lines.npz')
+                np.savez(
+                    samples_path,
+                    original=original_lines,
+                    augmented=augmented_lines,
+                    noiselevel=noiselevel,
+                )
+
+                # Plot each clean line with its augmented counterpart so the
+                # amplitude change is immediately visible.
+                fig, axes = plt.subplots(n_examples, 1, figsize=(10, 2.5 * n_examples), squeeze=False)
+                for line_idx, ax in enumerate(axes[:, 0]):
+                    ax.plot(original_lines[line_idx], label='Original training RF')
+                    ax.plot(augmented_lines[line_idx], label='After add_noise', alpha=0.8)
+                    ax.set_ylabel('Amplitude')
+                    ax.set_title(f'Training line {line_idx + 1}')
+                    ax.grid(True, alpha=0.3)
+                axes[-1, 0].set_xlabel('Sample')
+                axes[0, 0].legend()
+                fig.suptitle(f'First-epoch RF examples (absolute noise level = {noiselevel})')
+                fig.tight_layout()
+                fig.savefig(path.join(savedir, 'epoch_0_augmented_rf_lines.png'), dpi=200)
+                plt.close(fig)
+                print(f'Saved first-epoch RF examples to {samples_path}')
             
             y = sample_batched['y1'].cuda()     # Ground truth bubble distribution
             
