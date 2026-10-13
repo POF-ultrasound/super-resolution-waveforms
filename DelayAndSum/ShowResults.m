@@ -20,7 +20,7 @@ datasets = dir(settings.parent_path);
 datasets = datasets(3:end);
 
 % Plot type
-plotmode = "pulses";                  % Enter "nBubbles", "pulses" or "all"
+plotmode = "nBubbles";                  % Enter "nBubbles", "pulses" or "all"
 additional_specification = "_noise128"; % Only used when plotmode = "pulses"
 
 % Add path to export_fig module
@@ -37,7 +37,7 @@ settings.cross_secs = [
     1.64553,49,52;
     1.64375,50,53;
     1.93755,47,50;
-    1.36694,47,50;]; % For densities of resp. 1000,100,2500,500. This is chosen such the cross section is at exactly one bubble.
+    1.1626025595,46,49;]; % For densities of resp. 1000,100,2500,500. This is chosen such the cross section is at exactly one bubble.
 
 settings.nBubblesList = [100,500,1000,2500];
 settings.tolerance = tolerance;
@@ -233,9 +233,9 @@ for dataset = 1 : length(datasets)
 
     % Save the figure
     export_fig diffraction-limited_reconstruction.pdf
-    sourceFile = "diffraction-limited_reconstruction.pdf";
-    destinationFile = savedir + settings.delim + nBubbles + sourceFile;
-    movefile(sourceFile, destinationFile)
+    % sourceFile = "diffraction-limited_reconstruction.pdf";
+    % destinationFile = savedir + settings.delim + nBubbles + sourceFile;
+    % movefile(sourceFile, destinationFile)
     close(fig_dl);
     
     clear img_log img_demod img
@@ -347,8 +347,8 @@ for dataset = 1 : length(datasets)
 
     export_fig super-resolved_reconstruction.pdf
     sourceFile = "super-resolved_reconstruction.pdf";
-    destinationFile = savedir + settings.delim + nBubbles + sourceFile;
-    movefile(sourceFile, destinationFile)
+    % destinationFile = savedir + settings.delim + nBubbles + sourceFile;
+    % movefile(sourceFile, destinationFile)
     close(fig_sr);
 
     %% SHOW ZOOMED RECONSTRUCTION IN THE MID-FIELD
@@ -494,7 +494,7 @@ for dataset = 1 : length(datasets)
         set(gca, 'Position', [1 1 2.358 2.358], 'Units','inches')
         set(gca, 'FontSize', 8,'FontName', 'Times New Roman');
 
-        exportgraphics(gcf, savedir + settings.delim + nBubbles + "_crosssection.pdf", 'ContentType', 'vector', 'Resolution', settings.dpi)
+        % exportgraphics(gcf, savedir + settings.delim + nBubbles + "_crosssection.pdf", 'ContentType', 'vector', 'Resolution', settings.dpi)
         close;
 
         % Using tiledlayout
