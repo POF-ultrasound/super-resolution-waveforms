@@ -33,8 +33,8 @@ def train(pulse_name):
     
     #%% FILE DIRECTORIES
     
-    trndir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
-    valdir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
+    trndir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
+    valdir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
     
     # Exclude non-RF datafiles
     trnfilelist = listdir(trndir)
@@ -68,7 +68,7 @@ def train(pulse_name):
         val_dataset,   batch_size=BATCH_SIZE, shuffle=True)
     
     #%% PATHS
-    savedir = "D:\\SRML-1D-pulse-types\\Results\\Networks" + delim + "model_" + pulse_name + delim + str(NEPOCHS) + "_epochs"
+    savedir = "E:\\SRML-1D-pulse-types\\Results\\Networks" + delim + "model_" + pulse_name + delim + str(NEPOCHS) + "_epochs"
     print("Weights stored in", savedir)
     
     if path.exists(savedir) == False:
@@ -168,8 +168,8 @@ def train_noise(pulse_name):
         
     for j,noiselevel in enumerate(noiselevels):
         print("pulse name: {}, noise level: {}".format(pulse_name,noiselevels_p[j]))
-        trndir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
-        valdir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
+        trndir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
+        valdir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
         
         # Exclude non-RF datafiles
         trnfilelist = listdir(trndir)
@@ -194,7 +194,7 @@ def train_noise(pulse_name):
             val_dataset,   batch_size=BATCH_SIZE, shuffle=True)
         
         #%% PATHS
-        savedir   = "D:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_noise' + str(noiselevels_p[j]) + delim + str(NEPOCHS) + "_epochs"
+        savedir   = "E:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_noise' + str(noiselevels_p[j]) + delim + str(NEPOCHS) + "_epochs"
         
         print("Weights stored in: ", savedir)
         if path.exists(savedir) == False:
@@ -300,8 +300,8 @@ def train_noise_range(pulse_name, low_noise_p, high_noise_p):
     
     #%% FILE DIRECTORIES
 
-    trndir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
-    valdir = "D:\\SRML-1D-pulse-types\\Results\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
+    trndir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
+    valdir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
     
     # Exclude non-RF datafiles
     trnfilelist = listdir(trndir)
@@ -326,7 +326,7 @@ def train_noise_range(pulse_name, low_noise_p, high_noise_p):
         val_dataset,   batch_size=BATCH_SIZE, shuffle=True)
     
     #%% PATHS
-    savedir   = "D:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_noiserange' + str(low_noise_p) + "-" + str(high_noise_p) + delim + str(NEPOCHS) + "_epochs"
+    savedir   = "E:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_noiserange' + str(low_noise_p) + "-" + str(high_noise_p) + delim + str(NEPOCHS) + "_epochs"
     
     print("Weights stored in: ", savedir)
     if path.exists(savedir) == False:
@@ -437,8 +437,8 @@ def train_noise_absolute_range(pulse_name, noiselevel):
     
     #%% FILE DIRECTORIES
 
-    trndir = "F:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
-    valdir = "F:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
+    trndir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\TRAINING"
+    valdir = "E:\\SRML-1D-pulse-types\\Results\\RF signals\\txt_files\\" + pulse_name + "\\VALIDATION"
     
     # Exclude non-RF datafiles
     trnfilelist = listdir(trndir)
@@ -463,7 +463,7 @@ def train_noise_absolute_range(pulse_name, noiselevel):
         val_dataset,   batch_size=BATCH_SIZE, shuffle=True)
     
     #%% PATHS
-    savedir   = "F:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_absolutenoise' + str(noiselevel) + delim + str(NEPOCHS) + "_epochs"
+    savedir   = "E:\\SRML-1D-pulse-types\\Results\\Networks"  + delim + "model_" + pulse_name + '_absolutenoise' + str(noiselevel) + delim + str(NEPOCHS) + "_epochs"
     
     print("Weights stored in: ", savedir)
     if path.exists(savedir) == False:

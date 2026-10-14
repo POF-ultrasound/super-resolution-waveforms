@@ -41,15 +41,16 @@ connectorArray = Trans.Connector;
 
 %% COMPENSATE FOR TRANSFER FUNCTION DIFFERENCES AND GAIN FOR SCALING
 % Simulations TF
-Rcv_TF_sim = load("C:\Users\rienk\OneDrive - University of Twente\Documents\Projects\1. US pulse shapes for deep learning applications\SRML-1D-pulse-types\RF_simulator\microbubble-simulator\functions\ReceiveTransferFunctionFit.mat");
+Rcv_TF_sim = load("C:\Users\Guillaume\Documents\Rienk\super-resolution-waveforms\RF_simulator\microbubble-simulator\functions\ReceiveTransferFunctionFit.mat");
 Hfit_sim = Rcv_TF_sim.Hfit;
 Fs = Rcv_TF_sim.Fs;
 N_sim = length(Hfit_sim);
 f_sim = (0:(N_sim-1))*Fs/N_sim;
 
 % Experiments TF
-Rcv_TF_exp = load("measured_receive_impulse_response.mat");
-IR = Rcv_TF_exp.IR;
+% Rcv_TF_exp = load("measured_receive_impulse_response.mat");
+Rcv_TF_exp = load("C:\Users\Guillaume\Documents\Physics-of-Fluids-ultrasound\transducers\Characterized models\P4-1.mat");
+IR = Rcv_TF_exp.Transducer.IR_rec;
 N_exp = length(IR);
 Hfit_exp = fft(IR,N_sim)/Fs;
 
@@ -70,6 +71,28 @@ ylabel('Sensitivity (ADCL/Pa)')
 % Compute scaling transfer function
 TF_scaling = Hfit_sim./Hfit_exp;
 TF_gain = mean(abs(TF_scaling(f_sim<5e6))); % in [Sim. units/Verasonics units]. This is a correction for sensitivity differences between transfer functions.
+
+% Build a smoothed and bounded magnitude correction in the transducer band.
+correction_range = f_sim >= 0.8e6 & f_sim <= 4.2e6;
+sensitivity_range = f_sim >= 1e6 & f_sim <= 4e6;
+exp_sensitivity = abs(Hfit_exp);
+sensitivity_floor = 0.1 * max(exp_sensitivity(sensitivity_range));
+TF_gain_profile = ones(size(f_sim));
+TF_gain_profile(correction_range) = abs(Hfit_sim(correction_range)) ./ ...
+    max(exp_sensitivity(correction_range), sensitivity_floor);
+smooth_span = max(3, 2*floor((0.1e6/(Fs/N_sim))/2)+1);
+TF_gain_profile(correction_range) = smoothdata(...
+    TF_gain_profile(correction_range), 'movmean', smooth_span);
+TF_gain_profile(correction_range) = min(...
+    TF_gain_profile(correction_range), 1.5*TF_gain);
+
+blend = zeros(size(f_sim));
+ramp_up = f_sim > 0.8e6 & f_sim < 1e6;
+ramp_down = f_sim > 4e6 & f_sim < 4.2e6;
+blend(ramp_up) = 0.5 - 0.5*cos(pi*(f_sim(ramp_up)-0.8e6)/0.2e6);
+blend(f_sim >= 1e6 & f_sim <= 4e6) = 1;
+blend(ramp_down) = 0.5 + 0.5*cos(pi*(f_sim(ramp_down)-4e6)/0.2e6);
+TF_gain_profile = 1 + blend .* (TF_gain_profile - 1);
 
 % Check if TGC is maximized
 if length(unique(TGC.Waveform)) > 1 % Check if the TGC is the same throughout one RF line
@@ -147,7 +170,8 @@ for buf = 1:nBuffers
             RF = seperateElements(data,frame,connectorArray);
 
             % Scale and filter
-            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
+            RF = scaleAndFilterRF(RF, TF_gain_profile, f_sim, Fs_RF, ...
+                TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
 
             % Construct pulse dataframe
             pulse.p_norm = TW(1).Wvfm1Wy';
@@ -168,7 +192,8 @@ for buf = 1:nBuffers
             RF = seperateElements(data,frame,connectorArray);
 
             % Scale the RF line
-            RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
+            RF = scaleAndFilterRF(RF, TF_gain_profile, f_sim, Fs_RF, ...
+                TGC_gain, N_sim, filt_b, filt_a, ROI1, ROI2, I, noise);
 
             % Construct pulse dataframe
             pulse.p_norm = TW(2).Wvfm1Wy';
@@ -281,14 +306,16 @@ end
 
 end
 
-function RF = scaleAndFilterRF(RF, TF_gain, TGC_gain, N, filt_b, filt_a, ROI1, ROI2, I, noise)
+function RF = scaleAndFilterRF(RF, TF_gain_profile, f_sim, Fs_RF, TGC_gain, N, filt_b, filt_a, ROI1, ROI2, I, noise)
 % Scales the RF lines by correcting for the transfer function differences
 % between simulations and experiments, and compensates for the differences
 % in gain used.
 %
 % Parameters:
 %   RF        - Struct array containing RF data.
-%   TF_gain   - Transfer function gain correction factor (scalar or array).
+%   TF_gain_profile - Frequency-dependent magnitude correction on f_sim.
+%   f_sim     - Frequency grid of the transfer-function calibration.
+%   Fs_RF     - Sampling frequency of the experimental RF data.
 %   TGC_gain  - Time-gain compensation factor (scalar).
 %   N         - Number of points for FFT computation (zero-padding length).
 %   filt_b    - Numerator coefficients of the Butterworth bandpass filter.
@@ -308,8 +335,11 @@ N_el = length(RF);
 % Number of samples in each RF line
 M = length(RF(1).V);
 
-% Transfer function gain adjustment for each element
-TF_gain = ones(1, N) * TF_gain;
+% Map the calibration profile onto the experimental RF FFT frequency bins.
+fft_frequency = (0:N-1)*Fs_RF/N;
+fft_frequency(fft_frequency > Fs_RF/2) = ...
+    fft_frequency(fft_frequency > Fs_RF/2) - Fs_RF;
+gain_profile = interp1(f_sim, TF_gain_profile, abs(fft_frequency), 'linear', 1);
 
 % Define the ROI vector
 G                   = ones(1,M);
@@ -324,7 +354,7 @@ for el = 1:N_el
     f_RF        = fft(RF(el).V, N);
 
     % Scale with the transfer function of the transducer
-    f_RF_sc     = f_RF .* TF_gain;
+    f_RF_sc     = f_RF .* gain_profile;
 
     % Convert back to time domain, then apply the bandpass without phase shift.
     RF_sc = real(ifft(f_RF_sc, N));
